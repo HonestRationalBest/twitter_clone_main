@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
+import config from "config";
 import mongoose from "mongoose";
 import cors from "cors";
 import { UserCtrl } from "./controllers/UserController";
@@ -18,10 +19,7 @@ app.get("/users/verify", registerValidations, UserCtrl.verify);
 // app.patch("/users", UserCtrl.update);
 // app.delete("/users", UserCtrl.delete);
 
-const mongoUri: string =
-  process.env.MONGO_URI ||
-  "mongodb+srv://Pavel:pawel007@cluster0.rc5e7.mongodb.net/twitter";
-
+const mongoUri: string = process.env.MONGO_URI || config.get("mongoUri");
 const start = async (): Promise<void> => {
   try {
     await mongoose.connect(mongoUri, {
