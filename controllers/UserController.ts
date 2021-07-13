@@ -1,11 +1,13 @@
 import express from "express";
+import config from "config";
 import { validationResult } from "express-validator";
 import { UserModel } from "../models/User";
 import { generateMD5 } from "../utils/generateHash";
 import { sendEmail } from "../utils/sendMaill";
-
+import jwt from "jsonwebtoken";
+import { isValidObjectId } from "mongoose";
 class UserController {
-  async index(req: express.Request, res: express.Response): Promise<void> {
+  async getAll(req: express.Request, res: express.Response): Promise<void> {
     try {
       const users = await UserModel.find({}).exec();
       res.json({
@@ -13,13 +15,45 @@ class UserController {
         data: users,
       });
     } catch (e) {
+      console.log(e);
       res.json({
         status: "error",
         message: JSON.stringify(e),
       });
     }
   }
+  async get(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      const id = req.params.id;
 
+      if (!isValidObjectId(id)) {
+        res.status(400).send();
+        return;
+      }
+
+      const user = await UserModel.findById(id).exec();
+      if (!user) {
+        res.status(404).send();
+        return;
+      }
+      res.json({
+        status: "success",
+        data: {
+          id: user._id,
+          email: user.email,
+          fullname: user.fullname,
+          username: user.username,
+          confirmed: user.confirmed,
+        },
+      });
+    } catch (e) {
+      console.log(e);
+      res.json({
+        status: "error",
+        message: JSON.stringify(e),
+      });
+    }
+  }
   async create(req: express.Request, res: express.Response): Promise<void> {
     try {
       const errors = validationResult(req);
@@ -34,13 +68,13 @@ class UserController {
         email: req.body.email,
         fullname: req.body.fullname,
         username: req.body.username,
-        password: req.body.password,
+        password: generateMD5(req.body.password + process.env.SECRET_KEY),
         confirmed_hash: generateMD5(
-          process.env.SECREAT_KEY || Math.random().toString()
+          process.env.SECRET_KEY || Math.random().toString()
         ),
       };
 
-      const candidate = UserModel.findOne({
+      const candidate = await UserModel.findOne({
         $or: [{ email: data.email }, { username: data.username }],
       });
 
@@ -67,7 +101,13 @@ class UserController {
             } else {
               res.status(201).json({
                 status: "success",
-                data: user,
+                data: {
+                  id: user._id,
+                  email: user.email,
+                  fullname: user.fullname,
+                  username: user.username,
+                  confirmed: user.confirmed,
+                },
               });
             }
           },
@@ -104,6 +144,41 @@ class UserController {
           message: "Пользователь не найден",
         });
       }
+    } catch (e) {
+      res.status(500).json({
+        status: "error",
+        message: JSON.stringify(e),
+      });
+    }
+  }
+  async afterLogin(req: any, res: express.Response): Promise<void> {
+    try {
+      res.json({
+        status: "success",
+        data: {
+          ...req.user._doc,
+          token: jwt.sign(
+            { userId: req.user._id },
+            process.env.SECRET_KEY || config.get("secretKey"),
+            {
+              expiresIn: "1h",
+            }
+          ),
+        },
+      });
+    } catch (e) {
+      res.status(500).json({
+        status: "error",
+        message: JSON.stringify(e),
+      });
+    }
+  }
+  async getUserInfo(req: any, res: express.Response): Promise<void> {
+    try {
+      res.json({
+        status: "success",
+        data: req.user,
+      });
     } catch (e) {
       res.status(500).json({
         status: "error",

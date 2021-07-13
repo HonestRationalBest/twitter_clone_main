@@ -6,18 +6,24 @@ import mongoose from "mongoose";
 import cors from "cors";
 import { UserCtrl } from "./controllers/UserController";
 import { registerValidations } from "./validations/register";
-
+import { passport } from "./core/passport";
 const app = express();
 app.use(express.static("public"));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(cors());
+app.use(passport.initialize());
 
-app.get("/users", UserCtrl.index);
-app.post("/users", registerValidations, UserCtrl.create);
-app.get("/users/verify", registerValidations, UserCtrl.verify);
-// app.patch("/users", UserCtrl.update);
-// app.delete("/users", UserCtrl.delete);
+app.get("/users", UserCtrl.getAll);
+app.get("/users/me", passport.authenticate("jwt"), UserCtrl.getUserInfo);
+app.get("/users/:id", UserCtrl.get);
+app.post("/users/register", registerValidations, UserCtrl.create);
+app.get("/users/verify", UserCtrl.verify);
+app.post(
+  "/users/login",
+  passport.authenticate("local", { failureRedirect: "/login" }),
+  UserCtrl.afterLogin
+);
 
 const mongoUri: string = process.env.MONGO_URI || config.get("mongoUri");
 const start = async (): Promise<void> => {
