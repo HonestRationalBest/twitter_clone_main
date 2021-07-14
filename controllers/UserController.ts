@@ -128,6 +128,7 @@ class UserController {
         res.status(400).send();
         return;
       }
+      console.log(hash);
 
       const user = await UserModel.findOne({ confirmed_hash: hash }).exec();
 
@@ -145,6 +146,7 @@ class UserController {
         });
       }
     } catch (e) {
+      console.log(e);
       res.status(500).json({
         status: "error",
         message: JSON.stringify(e),

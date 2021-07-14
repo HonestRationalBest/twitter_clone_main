@@ -7,6 +7,8 @@ import cors from "cors";
 import { UserCtrl } from "./controllers/UserController";
 import { registerValidations } from "./validations/register";
 import { passport } from "./core/passport";
+import { createTweetValidations } from "./validations/createTweet";
+import { TweetCtrl } from "./controllers/TweetController";
 const app = express();
 app.use(express.static("public"));
 app.use(express.json({ limit: "50mb" }));
@@ -15,15 +17,25 @@ app.use(cors());
 app.use(passport.initialize());
 
 app.get("/users", UserCtrl.getAll);
-app.get("/users/me", passport.authenticate("jwt"), UserCtrl.getUserInfo);
+app.get("/users/verify", UserCtrl.verify);
+app.get(
+  "/users/me",
+  passport.authenticate("jwt", { session: false }),
+  UserCtrl.getUserInfo
+);
 app.get("/users/:id", UserCtrl.get);
 app.post("/users/register", registerValidations, UserCtrl.create);
-app.get("/users/verify", UserCtrl.verify);
+app.post("/users/login", passport.authenticate("local"), UserCtrl.afterLogin);
+
 app.post(
-  "/users/login",
-  passport.authenticate("local", { failureRedirect: "/login" }),
-  UserCtrl.afterLogin
+  "/tweets",
+  passport.authenticate("jwt"),
+  createTweetValidations,
+  TweetCtrl.create
 );
+app.get("/tweets", TweetCtrl.getAll);
+app.get("/tweets/:id", TweetCtrl.get);
+app.delete("/tweets/:id", passport.authenticate("jwt"), TweetCtrl.delete);
 
 const mongoUri: string = process.env.MONGO_URI || config.get("mongoUri");
 const start = async (): Promise<void> => {

@@ -13,6 +13,9 @@ passport.use(
         const user = await UserModel.findOne({
           $or: [{ email: username }, { username }],
         }).exec();
+        if (!user.confirmed) {
+          return done(null, false);
+        }
         if (!user) {
           return done(null, false);
         }
@@ -33,12 +36,16 @@ passport.use(
   new JwtStrategy(
     {
       secretOrKey: process.env.SECRET_KEY || config.get("secretKey"),
-      //TODO
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromHeader("token"),
     },
     async (payload, done) => {
       try {
-        return done(null, payload.user);
+        console.log(payload);
+        const user = await UserModel.findById(payload.userId).exec();
+        if (user) {
+          return done(null, user);
+        }
+        done(null, false);
       } catch (error) {
         done(error);
       }

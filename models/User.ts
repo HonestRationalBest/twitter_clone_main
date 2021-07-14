@@ -1,4 +1,4 @@
-import { model, Schema } from "mongoose";
+import { model, Schema, Document } from "mongoose";
 
 export interface UserModelInterface {
   _id?: string;
@@ -12,8 +12,9 @@ export interface UserModelInterface {
   about?: string;
   website?: string;
 }
+export type UserModelDocumentInterface = UserModelInterface & Document;
 
-const UserSchema = new Schema({
+const UserSchema = new Schema<UserModelInterface>({
   email: {
     unique: true,
     require: true,
